@@ -2,14 +2,21 @@
 
 # dependencies
 /node_modules
+/frontend/node_modules
 /.pnp
 .pnp.js
+.venv
+venv
+backend/.venv
+backend/venv
 
 # testing
 /coverage
+.pytest_cache
 
 # production
 /build
+/frontend/build
 
 # misc
 .DS_Store
@@ -21,3 +28,19 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# local configuration
+.env
+
+# large model and generated ML artifacts
+backend/last_trained_model_checkpoint.pth
+backend/*.pth
+backend/*.pt
+backend/*.bin
+backend/artifacts/*
+!backend/artifacts/.gitkeep

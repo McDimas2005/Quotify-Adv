@@ -5,7 +5,7 @@ const Navbar = ({ onPowerButtonClick }) => {
   return (
     <div className="navbar">
       <div className="navbar-logo font-merriweather">Quotify</div>
-      <a onClick={onPowerButtonClick} className='logout'>Logout</a>
+      <button type="button" onClick={onPowerButtonClick} className="logout">Logout</button>
     </div>
   );
 };

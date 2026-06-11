@@ -10,9 +10,14 @@
   top: 0;
 }
 
-.logout{
+.logout {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
   font-size: 1.25rem;
   font-weight: 700;
+  padding: 0;
 }
 
 .navbar-logo {
@@ -20,16 +25,15 @@
   font-weight: bolder;
 }
 
-.navbar a {
-  cursor: pointer;
+.navbar button {
   transition: transform 0.2s, color 0.2s;
 }
 
-.navbar a:hover {
+.navbar button:hover {
   transform: scale(1.05);
 }
 
-.navbar a:active {
+.navbar button:active {
   transform: scale(0.95);
   color: #C44900;
 }

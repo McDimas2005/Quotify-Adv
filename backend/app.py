@@ -1,95 +1,140 @@
-from flask import Flask, request, jsonify
-import torch
-from transformers import BertTokenizer, BertForSequenceClassification, AdamW
-import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
-from sklearn.preprocessing import LabelEncoder
+from pathlib import Path
+
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
-import random
 
-app = Flask(__name__)
-CORS(app)
+from src.config import AppConfig, config
+from src.data_loader import load_data
+from src.emotion_classifier import EmotionClassifier
+from src.health import artifact_status
+from src.recommenders import CrossEncoderRerankRecommender, LegacyTfidfRecommender, SbertDenseRecommender
 
-# Load the dataset
-dataset = pd.read_csv('./(Preprocessed)Emotion_classify_Data(Labeled).csv')
 
-# Shuffle the dataset
-dataset = dataset.sample(frac=1, random_state=42).reset_index(drop=True)
+def create_app(app_config: AppConfig = config, quotes_override=None) -> Flask:
+    static_folder = str(app_config.frontend_build_dir) if app_config.frontend_build_dir.exists() else None
+    app = Flask(__name__, static_folder=static_folder, static_url_path="")
 
-# Initialize BERT tokenizer and model
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=dataset['Emotion'].nunique())
+    if app_config.cors_origins:
+        CORS(app, origins=[origin.strip() for origin in app_config.cors_origins.split(",") if origin.strip()])
+    else:
+        CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:3000"])
 
-# Fine-tune BERT on your dataset
-learning_rate = 2e-5
-optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
-loss_fn = torch.nn.CrossEntropyLoss()
+    loaded_data = load_data(app_config, quotes_override=quotes_override)
+    emotion_classifier = EmotionClassifier(app_config, loaded_data.emotion_data["Emotion"].unique())
+    legacy = LegacyTfidfRecommender(app_config, loaded_data.quotes, emotion_classifier)
+    dense = SbertDenseRecommender(app_config, loaded_data.quotes, emotion_classifier)
+    reranker = CrossEncoderRerankRecommender(app_config, loaded_data.quotes, emotion_classifier, dense)
+    recommenders = {
+        legacy.strategy_id: legacy,
+        dense.strategy_id: dense,
+        reranker.strategy_id: reranker,
+    }
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model.to(device)
+    app.extensions["quotify"] = {
+        "config": app_config,
+        "data": loaded_data,
+        "emotion_classifier": emotion_classifier,
+        "recommenders": recommenders,
+    }
 
-# Load the checkpoint
-checkpoint = torch.load('last_trained_model_checkpoint.pth', map_location=torch.device('cpu'))
-model.load_state_dict(checkpoint['model_state_dict'], strict=False)
-optimizer = AdamW(model.parameters(), lr=5e-5)
-optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    def _available_recommenders():
+        return {key: value for key, value in recommenders.items() if value.available}
 
-epoch = checkpoint['epoch']
-best_val_loss = checkpoint['best_val_loss']
-early_stop_count = checkpoint['early_stop_count']
+    def _resolve_strategy(strategy_id):
+        requested = strategy_id or app_config.default_strategy
+        if requested in recommenders and recommenders[requested].available:
+            return recommenders[requested]
+        available = _available_recommenders()
+        if available:
+            return next(iter(available.values()))
+        raise RuntimeError("No recommendation strategies are available.")
 
-print(f"Model and optimizer states loaded successfully.")
-print(f"Epoch: {epoch}, Best Validation Loss: {best_val_loss}, Early Stop Count: {early_stop_count}")
+    @app.get("/health")
+    def health():
+        available = _available_recommenders()
+        return jsonify(
+            {
+                "status": "ok" if available else "degraded",
+                "app": app_config.app_name,
+                "version": app_config.version,
+                "available_strategies": list(available.keys()),
+                "strategies": [strategy.info().to_dict() for strategy in recommenders.values()],
+                "artifacts": artifact_status(app_config, dense),
+                "models": {
+                    "emotion_classifier": emotion_classifier.status.to_dict(),
+                    "sentence_transformer": {
+                        "available": dense.available,
+                        "model": app_config.sbert_model_name,
+                        "reason": dense.unavailable_reason or None,
+                    },
+                    "cross_encoder": {
+                        "available": reranker.available,
+                        "enabled": app_config.enable_cross_encoder,
+                        "model": app_config.cross_encoder_model_name,
+                        "reason": reranker.unavailable_reason or None,
+                    },
+                },
+            }
+        )
 
-# Prepare label encoder
-emotion_labels = dataset['Emotion']
-label_encoder = LabelEncoder()
-label_encoder.fit(emotion_labels)
+    @app.get("/strategies")
+    def strategies():
+        return jsonify([strategy.info().to_dict() for strategy in recommenders.values()])
 
-# Load quotes and label them with emotions
-quotesDF = pd.read_csv('./(Preprocessed)quotes.csv')
+    @app.post("/get_quote")
+    def get_quote():
+        payload = request.get_json(silent=True) or {}
+        input_text = str(payload.get("inputText", "")).strip()
+        if not input_text:
+            return jsonify({"error": "inputText is required."}), 400
 
-def predict_emotion(text, label_encoder):
-    inputs = tokenizer.encode_plus(text, add_special_tokens=True, max_length=128, padding='max_length', truncation=True, return_tensors='pt')
-    input_ids = inputs['input_ids'].to(device)
-    attention_mask = inputs['attention_mask'].to(device)
+        top_k = int(payload.get("topK") or 5)
+        strategy = _resolve_strategy(payload.get("strategy"))
+        try:
+            return jsonify(strategy.recommend(input_text, top_k=top_k).to_dict())
+        except Exception as exc:
+            return jsonify({"error": str(exc), "strategy": strategy.strategy_id}), 503
 
-    with torch.no_grad():
-        model.eval()
-        outputs = model(input_ids, attention_mask=attention_mask)
-    logits = outputs.logits
-    predicted_label = torch.argmax(logits, dim=1).item()
-    predicted_emotion = label_encoder.inverse_transform([predicted_label])[0]
+    @app.post("/compare")
+    def compare():
+        payload = request.get_json(silent=True) or {}
+        input_text = str(payload.get("inputText", "")).strip()
+        if not input_text:
+            return jsonify({"error": "inputText is required."}), 400
 
-    return predicted_emotion, logits
+        top_k = int(payload.get("topK") or 5)
+        results = []
+        errors = []
+        for strategy in recommenders.values():
+            if not strategy.available:
+                errors.append({"strategy": strategy.strategy_id, "error": strategy.unavailable_reason})
+                continue
+            try:
+                results.append(strategy.recommend(input_text, top_k=top_k).to_dict())
+            except Exception as exc:
+                errors.append({"strategy": strategy.strategy_id, "error": str(exc)})
+        return jsonify({"inputText": input_text, "results": results, "errors": errors})
 
-def find_most_similar_quote(input_sentence, quotes_df, input_emotion, emotion_weight=1.1):
-    quotes = quotes_df['Quote'].tolist()
-    authors = quotes_df['Author'].tolist()
-    emotions = quotes_df['emotion'].tolist()
+    @app.get("/")
+    def index():
+        if app.static_folder:
+            return send_from_directory(app.static_folder, "index.html")
+        return jsonify({"app": app_config.app_name, "message": "Frontend build is not available."})
 
-    vectorizer = TfidfVectorizer()
-    tfidf_matrix = vectorizer.fit_transform(quotes)
-    input_vec = vectorizer.transform([input_sentence])
-    cosine_similarities = cosine_similarity(input_vec, tfidf_matrix).flatten()
+    @app.get("/<path:path>")
+    def static_proxy(path):
+        if app.static_folder:
+            candidate = Path(app.static_folder) / path
+            if candidate.exists():
+                return send_from_directory(app.static_folder, path)
+            return send_from_directory(app.static_folder, "index.html")
+        return jsonify({"error": "Not found"}), 404
 
-    emotion_weights = np.array([emotion_weight if emotion == input_emotion else 1.0 for emotion in emotions])
-    weighted_similarities = cosine_similarities * emotion_weights
+    return app
 
-    top_10_indices = np.argsort(weighted_similarities)[-5:]
-    selected_index = random.choice(top_10_indices)
 
-    return quotes[selected_index], authors[selected_index], emotions[selected_index]
+app = create_app()
 
-@app.route('/get_quote', methods=['POST'])
-def get_quote():
-    data = request.get_json()
-    input_text = data['inputText']
-    detected_emotion, _ = predict_emotion(input_text, label_encoder)
-    quote, author, quote_emotion = find_most_similar_quote(input_text, quotesDF, detected_emotion)
-    return jsonify({"quote": quote, "author": author, "emotion": detected_emotion, "quote_emotion": quote_emotion})
 
-if __name__ == '__main__':
-    app.run(port=5000, debug=True)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=config.port, debug=False)

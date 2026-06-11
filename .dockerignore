@@ -1,0 +1,13 @@
+.git
+.pytest_cache
+**/__pycache__
+**/*.pyc
+backend/.venv
+backend/venv
+backend/last_trained_model_checkpoint.pth
+backend/artifacts/*
+!backend/artifacts/.gitkeep
+frontend/node_modules
+frontend/build
+node_modules
+

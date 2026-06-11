@@ -1,29 +1,108 @@
 .page-container {
+  min-height: 100vh;
+  background: #014737;
+  color: white;
+}
+
+.main-shell {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 104px 0 48px;
+}
+
+.hero-panel {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  background-color: #014737;
-  color: white;
+  gap: 20px;
 }
 
 .text-container {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  width: 40rem;
-  margin-bottom: 2rem;
 }
 
 .header-text {
-  font-size: 4rem;
-  margin-bottom: -0.5rem;
+  font-size: clamp(2.5rem, 7vw, 4.8rem);
+  line-height: 1;
+  margin: 0 0 4px;
 }
 
 .subheader-text {
-  font-size: 2rem;
-  letter-spacing: 2px;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  letter-spacing: 0;
+  margin: 0;
+  color: #f3e1b6;
+}
+
+.strategy-control {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.strategy-button,
+.compare-button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.strategy-button {
+  background: transparent;
+  color: #f6f2e9;
+}
+
+.strategy-button.active {
+  background: #f3e1b6;
+  color: #014737;
+}
+
+.strategy-button:disabled {
+  color: rgba(255, 255, 255, 0.36);
+  cursor: not-allowed;
+}
+
+.strategy-card {
+  display: grid;
+  gap: 8px;
+  background: #c7dfc5;
+  color: #014737;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.strategy-card span,
+.score-grid span,
+.alternatives span {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.strategy-card strong {
+  display: block;
+  font-size: 1.1rem;
+}
+
+.strategy-card p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.strategy-warning {
+  color: #8a2c17;
+  font-weight: 700;
 }
 
 .input-container {
@@ -33,74 +112,201 @@
 }
 
 .input-field {
-  padding: 0.5rem 1rem;
-  padding-right: 2.5rem;
-  width: 40rem;
-  border-radius: 9999px;
-  background-color: #F3E1B6;
-  color: black;
-  font-size: 1.25rem;
-  border: none;
+  width: 100%;
+  min-height: 56px;
+  padding: 0.75rem 4rem 0.75rem 1.2rem;
+  border-radius: 999px;
+  background-color: #f3e1b6;
+  color: #10231e;
+  font-size: 1.1rem;
+  border: 2px solid transparent;
   outline: none;
+}
+
+.input-field:focus {
+  border-color: #c7dfc5;
 }
 
 .submit-button {
   position: absolute;
-  right: 1rem;
-  background: none;
+  right: 8px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #014737;
   border: none;
   cursor: pointer;
-  color: black;
-  font-size: 2rem;
+  color: white;
+  font-size: 1.3rem;
+  font-weight: 800;
 }
 
-.quote-container {
-  margin-top: 2rem;
-  background-color: #C7DFC5;
-  padding: 2rem;
-  border-radius: 0.5rem;
-  font-size: 1.25rem;
+.submit-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.action-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.compare-button {
+  padding: 0 18px;
+  background: #ffffff;
   color: #014737;
-  text-align: center;
-  width: 50%;
-  position: relative;
 }
 
-.info-icon {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  margin: 2px;
+.compare-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.64;
 }
 
-.tooltip {
-  font-size: 14px;
-  visibility: hidden;
-  width: 140px;
-  background-color: black;
-  color: #fff;
-  text-align: center;
-  border-radius: 5px;
-  padding: 5px;
-  position: absolute;
-  z-index: 1;
-  top: -5px;
-  right: 86%;
-  opacity: 0;
-  transition: opacity 0.3s;
-  margin: 2px;
+.error-state,
+.empty-state,
+.compare-errors {
+  border-radius: 8px;
+  padding: 14px 16px;
+  line-height: 1.5;
 }
 
-.info-icon:hover .tooltip {
-  visibility: visible;
-  opacity: 1;
+.error-state {
+  background: #ffe1d7;
+  color: #84230e;
 }
 
-.modal-overlay {
-  background-color: rgba(0, 0, 0, 0.5);
+.empty-state {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f6f2e9;
 }
 
-.modal {
-  width: 80%;
-  max-width: 500px;
+.results-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.results-section.compare-layout {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.result-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: #f6f2e9;
+  color: #014737;
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 0;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.result-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.strategy-pill,
+.emotion-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.strategy-pill {
+  background: #014737;
+  color: #ffffff;
+}
+
+.emotion-pill {
+  background: #c7dfc5;
+  color: #014737;
+}
+
+.quote-text {
+  font-family: Merriweather, serif;
+  font-size: clamp(1.05rem, 2vw, 1.3rem);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.quote-author {
+  font-family: Merriweather, serif;
+  margin: 0;
+  font-weight: 700;
+}
+
+.score-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.score-grid div {
+  background: #e5ecd8;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.score-grid strong {
+  display: block;
+  margin-top: 4px;
+}
+
+.rerank-score {
+  background: #f3e1b6;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.alternatives {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid rgba(1, 71, 55, 0.16);
+  padding-top: 12px;
+}
+
+.alternatives p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.compare-errors {
+  margin-top: 16px;
+  background: rgba(255, 225, 215, 0.9);
+  color: #84230e;
+}
+
+.compare-errors p {
+  margin: 0 0 6px;
+}
+
+@media (max-width: 880px) {
+  .main-shell {
+    padding-top: 88px;
+  }
+
+  .strategy-control,
+  .results-section.compare-layout,
+  .score-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .strategy-button {
+    text-align: center;
+  }
+
+  .result-card-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }

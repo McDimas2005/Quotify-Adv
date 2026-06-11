@@ -1,161 +1,99 @@
+---
+title: Quotify
+emoji: 💬
+colorFrom: green
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Quotify
 
-Quotify is an emotion-aware quote recommendation web application. Users describe how they feel in natural language, and the system detects the dominant emotion in the text, searches a curated quote corpus, and returns a relevant quote with its author.
+Quotify is an emotion-aware quote recommendation prototype. A user writes how they feel, the backend detects the likely emotion, and the app recommends quotes using one of three selectable NLP retrieval strategies.
 
-The project was developed as a machine learning application that connects NLP-based emotion classification with a recommendation layer. The official project report is available at [`LEGACY/Machine Learning-AOL.pdf`](LEGACY/Machine%20Learning-AOL.pdf).
+The original coursework method is preserved as the baseline, and the upgraded version adds modern dense retrieval plus an optional retrieve-and-rerank pipeline suitable for an AI/NLP portfolio demo.
 
-## Project Essence
+## What Changed
 
-Quotify addresses a simple but meaningful interaction: people often want words that match their current emotional state, but ordinary quote collections rely on manual browsing or keyword search. This application turns that process into a short conversational input.
+- Refactored the Flask backend into modular strategy classes.
+- Added `/health`, `/strategies`, `/get_quote`, and `/compare`.
+- Preserved the legacy BERT + TF-IDF method as a selectable baseline.
+- Added SentenceTransformer dense semantic search.
+- Added optional Bi-Encoder retrieval + Cross-Encoder reranking.
+- Added model/artifact fallback behavior so missing checkpoints do not crash the app.
+- Updated the React UI with strategy switching, compare mode, score cards, loading states, and error states.
+- Added Docker deployment for Hugging Face Spaces on port `7860`.
 
-The system focuses on three emotion classes:
+## Recommendation Strategies
 
-- `anger`
-- `fear`
-- `joy`
+| Strategy ID | UI Label | Method | Best Use |
+| --- | --- | --- | --- |
+| `legacy_tfidf_bert` | Legacy BERT + TF-IDF | Fine-tuned BERT emotion classifier, TF-IDF cosine similarity, emotion boost | Preserves the original project method |
+| `sbert_dense` | Dense Semantic Search | `sentence-transformers/all-MiniLM-L6-v2` quote embeddings, cosine similarity, emotion boost | Better meaning-based retrieval on CPU |
+| `cross_encoder_rerank` | AI Reranker | Dense retrieval top K, `cross-encoder/ms-marco-MiniLM-L6-v2` reranking, emotion-aware final score | Higher quality reranking when CPU/memory allows |
 
-From that input, Quotify combines:
+## Architecture
 
-- a fine-tuned BERT classifier for emotion detection
-- a preprocessed quote dataset labeled with predicted emotions
-- TF-IDF vectorization and cosine similarity for content relevance
-- emotion-weighted ranking so the selected quote is semantically similar and emotionally aligned
-
-## How It Works
-
-1. The user enters a short sentence in the React interface.
-2. The frontend sends the text to the Flask backend through `POST /get_quote`.
-3. The backend tokenizes the text with `bert-base-uncased`.
-4. A fine-tuned `BertForSequenceClassification` model predicts the user's emotion.
-5. The backend compares the input against the preprocessed quote corpus using TF-IDF and cosine similarity.
-6. Quotes with the detected emotion receive a small ranking boost.
-7. One quote is selected from the top candidates and returned with:
-   - quote text
-   - author
-   - detected user emotion
-   - selected quote emotion
-
-## Machine Learning Pipeline
-
-The research workflow is preserved in the `LEGACY/` notebooks and official report.
-
-### Data
-
-- Emotion dataset: 5,934 cleaned text samples after duplicate removal
-- Emotion labels: anger, fear, joy
-- Quote dataset: 48,391 raw quote records
-- Processed quote corpus: 36,937 unique quotes with author and predicted emotion labels
-
-### Model Experiments
-
-The project compares several approaches before selecting BERT for the application:
-
-| Model | Accuracy | Weighted F1 |
-| --- | ---: | ---: |
-| Naive Bayes | 0.8812 | 0.8813 |
-| Logistic Regression | 0.9191 | 0.9192 |
-| Fine-tuned BERT | 0.9562 | 0.9563 |
-
-BERT was selected because it produced the strongest evaluation result and better captures contextual meaning than the baseline bag-of-words models.
-
-## Innovation
-
-Quotify is not only an emotion classifier and not only a quote search tool. Its main contribution is the integration of both:
-
-- Emotion-first recommendation: user mood becomes a ranking signal, not just a displayed prediction.
-- Hybrid relevance: quote selection balances text similarity with emotion alignment.
-- End-to-end deployment: the trained NLP model is exposed through a Flask API and consumed by a React user interface.
-- Research-to-product flow: the repository keeps the exploratory notebooks, preprocessing flow, model comparison, trained-model loading path, backend API, and frontend implementation together.
+```text
+React UI
+  |-- strategy selector
+  |-- quote result cards
+  `-- compare-all mode
+        |
+        v
+Flask API
+  |-- GET /health
+  |-- GET /strategies
+  |-- POST /get_quote
+  `-- POST /compare
+        |
+        v
+Recommendation registry
+  |-- legacy_tfidf_bert
+  |-- sbert_dense
+  `-- cross_encoder_rerank
+        |
+        v
+Data and models
+  |-- fine-tuned BERT checkpoint, optional
+  |-- preprocessed emotion dataset
+  |-- preprocessed quote dataset
+  `-- generated SBERT artifacts under backend/artifacts/
+```
 
 ## Tech Stack
 
-### Machine Learning and Backend
+- Backend: Flask, gunicorn, PyTorch, Transformers, SentenceTransformers, scikit-learn, pandas, NumPy
+- Frontend: React 18, Create React App, CSS, React Icons
+- Deployment: Docker, Hugging Face Spaces
+- Research assets: Jupyter notebooks and official PDF report in `LEGACY/`
 
-- Python
-- Flask
-- Flask-CORS
-- PyTorch
-- Hugging Face Transformers
-- scikit-learn
-- pandas
-- NumPy
+## Local Setup
 
-### Frontend
-
-- React 18
-- Create React App
-- React Router
-- React Icons
-- Tailwind CSS tooling
-- CSS modules/files for component styling
-
-### Research Assets
-
-- Jupyter notebooks
-- CSV datasets
-- Official PDF report
-
-## Repository Structure
-
-```text
-.
-|-- backend/
-|   |-- app.py
-|   |-- (Preprocessed)Emotion_classify_Data(Labeled).csv
-|   `-- (Preprocessed)quotes.csv
-|-- frontend/
-|   |-- package.json
-|   |-- public/
-|   `-- src/
-|-- LEGACY/
-|   |-- Machine Learning-AOL.pdf
-|   |-- EDAandPreprocess.ipynb
-|   |-- NaiveBayes_ML_AOL_3_0.ipynb
-|   |-- LogisticRegression_ML_AOL_2_0.ipynb
-|   |-- BERT_ML_AOL_5_0.ipynb
-|   `-- QuotesSelector.ipynb
-`-- README.md
-```
-
-## Prerequisites
-
-- Python 3.9 or newer is recommended
-- Node.js and npm
-- A trained model checkpoint named `last_trained_model_checkpoint.pth`
-
-The checkpoint is not included in this repository. Download it from:
-
-```text
-https://drive.google.com/file/d/1UCsaBpSQEWzD8kkK2Etcdw5r63pmj2yO/view?usp=drive_web
-```
-
-Place the file here:
-
-```text
-backend/last_trained_model_checkpoint.pth
-```
-
-## How to Run
-
-### 1. Start the backend
+### Backend
 
 ```bash
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
-pip install flask flask-cors torch transformers pandas scikit-learn numpy
+pip install -r requirements.txt
 python app.py
 ```
 
-The API runs on:
+The backend runs on:
 
 ```text
-http://127.0.0.1:5000
+http://127.0.0.1:7860
 ```
 
-### 2. Start the frontend
+For a lighter local run that avoids loading dense models:
 
-Open a second terminal:
+```bash
+QUOTIFY_ENABLE_SBERT=false QUOTIFY_ENABLE_CROSS_ENCODER=false python app.py
+```
+
+### Frontend
 
 ```bash
 cd frontend
@@ -163,42 +101,184 @@ npm install
 npm start
 ```
 
-The React app runs on:
+The frontend runs on:
 
 ```text
 http://localhost:3000
 ```
 
-## API
+Create React App proxies API calls to the backend through `frontend/package.json`.
 
-### `POST /get_quote`
+## Model Checkpoint
 
-Request body:
+The original fine-tuned BERT checkpoint is intentionally not committed. Download it from:
 
-```json
-{
-  "inputText": "I feel nervous about tomorrow"
-}
+```text
+https://drive.google.com/file/d/1UCsaBpSQEWzD8kkK2Etcdw5r63pmj2yO/view?usp=drive_web
 ```
 
-Response body:
+Place it at:
+
+```text
+backend/last_trained_model_checkpoint.pth
+```
+
+If the checkpoint is missing, Quotify still starts and uses a clearly marked lightweight keyword fallback for emotion detection. `/health` reports whether the real checkpoint is loaded.
+
+## Artifact Generation
+
+The dense semantic strategy builds quote embeddings on first startup when `sentence-transformers` is available. To build them manually:
+
+```bash
+make build-index
+```
+
+Generated files are written to `backend/artifacts/`:
+
+```text
+quote_embeddings.npy
+quote_metadata.csv
+artifact_manifest.json
+```
+
+These artifacts can be large, so they are ignored by Git by default.
+
+## Docker
+
+Build and run locally:
+
+```bash
+make docker-build
+make docker-run
+```
+
+Or:
+
+```bash
+docker compose up --build
+```
+
+The container serves the React build and Flask API from one process on:
+
+```text
+http://localhost:7860
+```
+
+## Hugging Face Spaces Deployment
+
+1. Create a new Hugging Face Space.
+2. Choose Docker as the SDK.
+3. Push this repository to the Space.
+4. Keep the default app port as `7860`.
+5. Optional: add repository secrets or Space variables:
+   - `QUOTIFY_DEFAULT_STRATEGY=sbert_dense`
+   - `QUOTIFY_ENABLE_CROSS_ENCODER=false`
+   - `QUOTIFY_EMOTION_BOOST=0.08`
+   - `QUOTIFY_TOP_K_RETRIEVE=50`
+   - `QUOTIFY_MODEL_CHECKPOINT_PATH=last_trained_model_checkpoint.pth`
+6. If you do not include the BERT checkpoint, the app still runs with fallback emotion detection.
+
+For free CPU Spaces, keep `QUOTIFY_ENABLE_CROSS_ENCODER=false` unless startup time and memory are acceptable.
+
+## API Examples
+
+### Health
+
+```bash
+curl http://127.0.0.1:7860/health
+```
+
+### Strategies
+
+```bash
+curl http://127.0.0.1:7860/strategies
+```
+
+### Get One Quote
+
+```bash
+curl -X POST http://127.0.0.1:7860/get_quote \
+  -H "Content-Type: application/json" \
+  -d '{"inputText":"I feel nervous about tomorrow","strategy":"sbert_dense","topK":5}'
+```
+
+Example response:
 
 ```json
 {
   "quote": "Returned quote text",
   "author": "Quote author",
   "emotion": "fear",
-  "quote_emotion": "fear"
+  "quote_emotion": "fear",
+  "strategy": "sbert_dense",
+  "strategy_label": "Dense Semantic Search",
+  "scores": {
+    "semantic_score": 0.721,
+    "cross_encoder_score": null,
+    "emotion_boost": 0.08,
+    "final_score": 0.801
+  },
+  "alternatives": []
 }
 ```
 
-## Notes
+### Compare Methods
 
-- The backend expects to be run from the `backend/` directory because dataset and checkpoint paths are relative.
-- The first backend startup may download the base `bert-base-uncased` tokenizer/model files through Hugging Face if they are not already cached locally.
-- There is currently no committed Python `requirements.txt`; install the backend dependencies listed above manually.
-- The frontend `package.json` proxies development requests to `http://127.0.0.1:5000`, while the current UI also calls that backend URL directly.
+```bash
+curl -X POST http://127.0.0.1:7860/compare \
+  -H "Content-Type: application/json" \
+  -d '{"inputText":"I feel nervous about tomorrow","topK":5}'
+```
+
+## Developer Commands
+
+```bash
+make dev-backend
+make dev-frontend
+make test
+make build-index
+make validate-models
+make docker-build
+make docker-run
+```
+
+## Environment Variables
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PORT` | `7860` | Flask/gunicorn port |
+| `QUOTIFY_DEFAULT_STRATEGY` | `sbert_dense` | Preferred recommendation strategy |
+| `QUOTIFY_ENABLE_SBERT` | `true` | Enable dense retrieval loading |
+| `QUOTIFY_ENABLE_CROSS_ENCODER` | `true` locally, `false` in Docker | Enable optional reranker |
+| `QUOTIFY_EMOTION_BOOST` | `0.08` | Score boost for emotion-aligned quotes |
+| `QUOTIFY_TOP_K_RETRIEVE` | `50` | Dense candidates passed to reranker |
+| `QUOTIFY_MODEL_CHECKPOINT_PATH` | `last_trained_model_checkpoint.pth` | Fine-tuned BERT checkpoint path |
+
+## Limitations
+
+- Emotion detection is limited to `anger`, `fear`, and `joy`.
+- The quote emotion labels are generated by the project model, so they may contain prediction errors.
+- Dense retrieval may need to download open-source model files from Hugging Face on first run.
+- Cross-Encoder reranking is slower and may be disabled on constrained CPU deployments.
+- The fallback emotion classifier is only for local/demo resilience, not a replacement for the fine-tuned model.
+
+## Ethical Note
+
+Quotify recommends quotes for reflection and inspiration. It is not a mental health diagnosis tool, therapy tool, crisis intervention system, or substitute for professional support.
+
+## Legacy Project Reference
+
+The official report and original research notebooks remain under `LEGACY/`:
+
+```text
+LEGACY/Machine Learning-AOL.pdf
+LEGACY/EDAandPreprocess.ipynb
+LEGACY/NaiveBayes_ML_AOL_3_0.ipynb
+LEGACY/LogisticRegression_ML_AOL_2_0.ipynb
+LEGACY/BERT_ML_AOL_5_0.ipynb
+LEGACY/QuotesSelector.ipynb
+```
 
 ## License
 
-This repository includes a [`LICENSE`](LICENSE) file.
+See [`LICENSE`](LICENSE).
