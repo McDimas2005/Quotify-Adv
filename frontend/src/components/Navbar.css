@@ -1,0 +1,35 @@
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 1rem 2rem;
+  background-color: #014737;
+  color: white;
+  position: absolute;
+  top: 0;
+}
+
+.logout{
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.navbar-logo {
+  font-size: 2rem;
+  font-weight: bolder;
+}
+
+.navbar a {
+  cursor: pointer;
+  transition: transform 0.2s, color 0.2s;
+}
+
+.navbar a:hover {
+  transform: scale(1.05);
+}
+
+.navbar a:active {
+  transform: scale(0.95);
+  color: #C44900;
+}

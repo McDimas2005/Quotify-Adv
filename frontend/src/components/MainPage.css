@@ -1,0 +1,106 @@
+.page-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #014737;
+  color: white;
+}
+
+.text-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 40rem;
+  margin-bottom: 2rem;
+}
+
+.header-text {
+  font-size: 4rem;
+  margin-bottom: -0.5rem;
+}
+
+.subheader-text {
+  font-size: 2rem;
+  letter-spacing: 2px;
+}
+
+.input-container {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.input-field {
+  padding: 0.5rem 1rem;
+  padding-right: 2.5rem;
+  width: 40rem;
+  border-radius: 9999px;
+  background-color: #F3E1B6;
+  color: black;
+  font-size: 1.25rem;
+  border: none;
+  outline: none;
+}
+
+.submit-button {
+  position: absolute;
+  right: 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: black;
+  font-size: 2rem;
+}
+
+.quote-container {
+  margin-top: 2rem;
+  background-color: #C7DFC5;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  font-size: 1.25rem;
+  color: #014737;
+  text-align: center;
+  width: 50%;
+  position: relative;
+}
+
+.info-icon {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  margin: 2px;
+}
+
+.tooltip {
+  font-size: 14px;
+  visibility: hidden;
+  width: 140px;
+  background-color: black;
+  color: #fff;
+  text-align: center;
+  border-radius: 5px;
+  padding: 5px;
+  position: absolute;
+  z-index: 1;
+  top: -5px;
+  right: 86%;
+  opacity: 0;
+  transition: opacity 0.3s;
+  margin: 2px;
+}
+
+.info-icon:hover .tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+.modal-overlay {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal {
+  width: 80%;
+  max-width: 500px;
+}

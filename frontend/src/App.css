@@ -1,0 +1,33 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #004d40;
+  color: #fff;
+}
+
+input {
+  padding: 10px;
+  margin-top: 20px;
+  border: none;
+  border-radius: 5px;
+}
+
+button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  background-color: #ff5722;
+  color: #fff;
+}
+
+.quote-box {
+  margin-top: 20px;
+  padding: 20px;
+  background-color: #ff5722;
+  border-radius: 5px;
+  text-align: center;
+}
