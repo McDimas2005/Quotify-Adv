@@ -44,3 +44,23 @@ backend/*.pt
 backend/*.bin
 backend/artifacts/*
 !backend/artifacts/.gitkeep
+
+# Node
+frontend/node_modules/
+node_modules/
+
+# Builds
+frontend/build/
+
+# Python
+.venv/
+backend/.venv/
+__pycache__/
+*.pyc
+
+# ML artifacts
+backend/last_trained_model_checkpoint.pth
+backend/artifacts/
+*.pth
+*.pt
+*.bin
